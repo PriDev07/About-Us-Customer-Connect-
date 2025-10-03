@@ -1,124 +1,150 @@
-// Application Data
-let customers = [
-    {
-        id: 1,
-        name: "Rajesh Kumar",
-        mobile: "9876543210",
-        age: 35,
-        address: "123 Civil Lines",
-        city: "Jabalpur",
-        dateOfBirth: "1989-03-15",
-        anniversary: "2015-02-14",
-        rating: 5,
-        notes: "",
-        dateAdded: "2023-01-10"
-    },
-    {
-        id: 2,
-        name: "Priya Sharma",
-        mobile: "9876543211",
-        age: 28,
-        address: "456 Sadar Bazaar",
-        city: "Mandla", 
-        dateOfBirth: "1996-07-22",
-        anniversary: "2020-12-05",
-        rating: 4,
-        notes: "",
-        dateAdded: "2023-02-01"
-    },
-    {
-        id: 3,
-        name: "Amit Patel",
-        mobile: "9876543212",
-        age: 42,
-        address: "789 Station Road",
-        city: "Katni",
-        dateOfBirth: "1982-11-08",
-        anniversary: "2010-06-20",
-        rating: 3,
-        notes: "",
-        dateAdded: "2023-03-15"
-    },
-    {
-        id: 4,
-        name: "Sneha Reddy",
-        mobile: "9876543213",
-        age: 31,
-        address: "321 Main Market",
-        city: "Gotegaon",
-        dateOfBirth: "1993-09-12",
-        anniversary: "2018-11-25",
-        rating: 5,
-        notes: "",
-        dateAdded: "2023-04-05"
-    },
-    {
-        id: 5,
-        name: "Vikram Singh",
-        mobile: "9876543214",
-        age: 39,
-        address: "654 Bus Stand Road",
-        city: "Narsinghpur",
-        dateOfBirth: "1985-05-30",
-        anniversary: "2012-08-15",
-        rating: 4,
-        notes: "",
-        dateAdded: "2023-05-20"
-    },
-    {
-        id: 6,
-        name: "Meera Joshi",
-        mobile: "9876543215",
-        age: 26,
-        address: "987 College Road",
-        city: "Kareli",
-        dateOfBirth: "1998-12-03",
-        anniversary: "2022-04-10",
-        rating: 5,
-        notes: "",
-        dateAdded: "2023-06-10"
-    },
-    {
-        id: 7,
-        name: "Arjun Nair",
-        mobile: "9876543216",
-        age: 33,
-        address: "147 Railway Colony",
-        city: "Pipariya",
-        dateOfBirth: "1991-01-18",
-        anniversary: "2016-09-22",
-        rating: 2,
-        notes: "",
-        dateAdded: "2023-07-01"
-    },
-    {
-        id: 8,
-        name: "Kavya Menon",
-        mobile: "9876543217",
-        age: 29,
-        address: "258 Hospital Road",
-        city: "Gadarwara",
-        dateOfBirth: "1995-04-25",
-        anniversary: "2019-07-14",
-        rating: 4,
-        notes: "",
-        dateAdded: "2023-08-15"
-    },
-    {
-        id: 9,
-        name: "Rahul Tiwari",
-        mobile: "9876543218",
-        age: 36,
-        address: "369 Market Square",
-        city: "Shahpura",
-        dateOfBirth: "1988-08-14",
-        anniversary: "2014-03-20",
-        rating: 5,
-        notes: "",
-        dateAdded: "2023-09-20"
-    }
-];
+// Import Firebase services
+import { 
+    database, 
+    auth, 
+    ref, 
+    push, 
+    set, 
+    get, 
+    remove, 
+    onValue, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+} from './firebase-config.js';
 
+// Application Data - this will be replaced by Firebase data
+let customers = [];
+let currentUser = null;
+
+// Firebase Database Functions
+async function loadCustomersFromFirebase() {
+    try {
+        const customersRef = ref(database, 'customers');
+        const snapshot = await get(customersRef);
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            customers = Object.keys(data).map(key => ({
+                id: key,
+                ...data[key]
+            }));
+        } else {
+            customers = [];
+            // Initialize with some sample data if database is empty
+            await initializeSampleData();
+        }
+        
+        console.log('Customers loaded from Firebase:', customers.length);
+        return customers;
+    } catch (error) {
+        console.error('Error loading customers from Firebase:', error);
+        customers = [];
+        return customers;
+    }
+}
+
+async function initializeSampleData() {
+    const sampleCustomers = [
+        {
+            name: "Rajesh Kumar",
+            mobile: "9876543210",
+            age: 35,
+            address: "123 Civil Lines",
+            city: "Jabalpur",
+            dateOfBirth: "1989-03-15",
+            anniversary: "2015-02-14",
+            rating: 5,
+            notes: "",
+            dateAdded: "2023-01-10"
+        },
+        {
+            name: "Priya Sharma",
+            mobile: "9876543211",
+            age: 28,
+            address: "456 Sadar Bazaar",
+            city: "Mandla", 
+            dateOfBirth: "1996-07-22",
+            anniversary: "2020-12-05",
+            rating: 4,
+            notes: "",
+            dateAdded: "2023-02-01"
+        },
+        {
+            name: "Amit Patel",
+            mobile: "9876543212",
+            age: 42,
+            address: "789 Station Road",
+            city: "Katni",
+            dateOfBirth: "1982-11-08",
+            anniversary: "2010-06-20",
+            rating: 3,
+            notes: "",
+            dateAdded: "2023-03-15"
+        }
+    ];
+
+    for (const customer of sampleCustomers) {
+        await addCustomerToFirebase(customer);
+    }
+}
+
+async function addCustomerToFirebase(customerData) {
+    try {
+        const customersRef = ref(database, 'customers');
+        const newCustomerRef = push(customersRef);
+        await set(newCustomerRef, customerData);
+        return newCustomerRef.key;
+    } catch (error) {
+        console.error('Error adding customer to Firebase:', error);
+        throw error;
+    }
+}
+
+async function updateCustomerInFirebase(customerId, customerData) {
+    try {
+        const customerRef = ref(database, `customers/${customerId}`);
+        await set(customerRef, customerData);
+    } catch (error) {
+        console.error('Error updating customer in Firebase:', error);
+        throw error;
+    }
+}
+
+async function deleteCustomerFromFirebase(customerId) {
+    try {
+        const customerRef = ref(database, `customers/${customerId}`);
+        await remove(customerRef);
+    } catch (error) {
+        console.error('Error deleting customer from Firebase:', error);
+        throw error;
+    }
+}
+
+// Listen for real-time updates to customers
+function setupCustomersListener() {
+    const customersRef = ref(database, 'customers');
+    onValue(customersRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            customers = Object.keys(data).map(key => ({
+                id: key,
+                ...data[key]
+            }));
+        } else {
+            customers = [];
+        }
+        
+        // Update UI if we're on a screen that shows customers
+        if (currentScreen === 'customer-list-screen') {
+            displayCustomers();
+        } else if (currentScreen === 'home-screen') {
+            updateDashboardStats();
+        }
+    });
+}
+
+// Cities list
 const cities = [
     "Jabalpur",
     "Mandla", 
@@ -163,8 +189,8 @@ window.generateMarketingSMS = generateMarketingSMS;
 window.copySmsToClipboard = copySmsToClipboard;
 window.sendSuggestedSMS = sendSuggestedSMS;
 
-// Login Functionality
-function handleLogin(e) {
+// Login Functionality - Updated for Firebase Auth
+async function handleLogin(e) {
     e.preventDefault();
     console.log('Login form submitted');
     
@@ -173,21 +199,45 @@ function handleLogin(e) {
     
     console.log('Username:', username, 'Password:', password);
     
-    // Simple validation - any username and password works for demo
-    if ((username === 'aboutus' && password === 'aboutus') || (username === 'admin' && password === 'admin')) {
-        console.log('Login successful, showing home screen');
-        showHomeScreen();
+    // For demo purposes, we'll allow any username/password, but you can implement real auth
+    if (username && password) {
+        try {
+            // Try Firebase authentication first (if you have users set up)
+            // For now, we'll simulate successful login and load data
+            currentUser = { email: username };
+            
+            // Load customers from Firebase
+            await loadCustomersFromFirebase();
+            
+            // Setup real-time listener
+            setupCustomersListener();
+            
+            console.log('Login successful');
+            showHomeScreen();
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Login failed. Please try again.');
+        }
     } else {
-        alert('Invalid username or password. Please try again.');
+        alert('Please enter both username and password');
     }
 }
 
-function logout() {
+async function logout() {
     console.log('Logging out');
-    showScreen('login-screen');
-    document.getElementById('login-form').reset();
-    navigationHistory = [];
-    currentCustomerId = null;
+    try {
+        // Sign out from Firebase if using authentication
+        // await signOut(auth);
+        currentUser = null;
+        customers = [];
+        
+        showScreen('login-screen');
+        document.getElementById('login-form').reset();
+        navigationHistory = [];
+        currentCustomerId = null;
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
 }
 
 // Utility Functions
@@ -365,22 +415,26 @@ function closeDeleteModal() {
     customerToDelete = null;
 }
 
-function deleteCustomer() {
+async function deleteCustomer() {
     if (!customerToDelete) return;
     
-    const customerIndex = customers.findIndex(c => c.id === customerToDelete);
-    if (customerIndex !== -1) {
-        const deletedCustomer = customers[customerIndex];
-        customers.splice(customerIndex, 1);
-        
-        showSuccessMessage(`${deletedCustomer.name} has been deleted successfully!`);
+    try {
+        const customer = customers.find(c => c.id === customerToDelete);
+        if (customer) {
+            await deleteCustomerFromFirebase(customerToDelete);
+            showSuccessMessage(`${customer.name} has been deleted successfully!`);
+            closeDeleteModal();
+            
+            // Navigate back to customer list
+            setTimeout(() => {
+                showCustomerListScreen();
+                updateDashboardStats();
+            }, 1500);
+        }
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        alert('Failed to delete customer. Please try again.');
         closeDeleteModal();
-        
-        // Navigate back to customer list
-        setTimeout(() => {
-            showCustomerListScreen();
-            updateDashboardStats();
-        }, 1500);
     }
 }
 
@@ -495,35 +549,41 @@ function updateStarDisplay(container, rating) {
 }
 
 // Customer CRUD Operations
-function handleAddCustomer(e) {
+async function handleAddCustomer(e) {
     e.preventDefault();
     
     const formData = getCustomerFormData('add');
     if (validateCustomerForm(formData, 'add')) {
-        const newCustomer = {
-            id: Math.max(...customers.map(c => c.id), 0) + 1,
-            ...formData,
-            dateAdded: new Date().toISOString().slice(0, 10) // Add dateAdded here
-        };
-        
-        customers.push(newCustomer);
-        showSuccessMessage('Customer added successfully!');
-        setTimeout(() => showCustomerListScreen(), 1500);
+        try {
+            const newCustomer = {
+                ...formData,
+                dateAdded: new Date().toISOString().slice(0, 10)
+            };
+            
+            await addCustomerToFirebase(newCustomer);
+            showSuccessMessage('Customer added successfully!');
+            setTimeout(() => showCustomerListScreen(), 1500);
+        } catch (error) {
+            console.error('Error adding customer:', error);
+            alert('Failed to add customer. Please try again.');
+        }
     }
 }
 
-function handleEditCustomer(e) {
+async function handleEditCustomer(e) {
     e.preventDefault();
     
-    const customerId = parseInt(document.getElementById('edit-customer-id').value);
+    const customerId = document.getElementById('edit-customer-id').value;
     const formData = getCustomerFormData('edit');
     
     if (validateCustomerForm(formData, 'edit', customerId)) {
-        const customerIndex = customers.findIndex(c => c.id === customerId);
-        if (customerIndex !== -1) {
-            customers[customerIndex] = { id: customerId, ...formData, dateAdded: customers[customerIndex].dateAdded }; // Keep existing dateAdded
+        try {
+            await updateCustomerInFirebase(customerId, formData);
             showSuccessMessage('Customer updated successfully!');
             setTimeout(() => showCustomerDetailScreen(customerId), 1500);
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            alert('Failed to update customer. Please try again.');
         }
     }
 }
@@ -1013,7 +1073,28 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize all components
         initializeForms();
         initializeSearchAndFilters();
-        updateDashboardStats();
+        
+        // Set up Firebase authentication state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log('User is signed in:', user.email);
+                currentUser = user;
+                // Load customers if user is authenticated
+                loadCustomersFromFirebase().then(() => {
+                    setupCustomersListener();
+                    if (currentScreen === 'login-screen') {
+                        showHomeScreen();
+                    }
+                });
+            } else {
+                console.log('User is signed out');
+                currentUser = null;
+                customers = [];
+                if (currentScreen !== 'login-screen') {
+                    showScreen('login-screen');
+                }
+            }
+        });
         
         // Close modal when clicking outside
         document.addEventListener('click', function(e) {
@@ -1034,6 +1115,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error during initialization:', error);
     }
     
-    // Ensure login screen is active
+    // Ensure login screen is active initially
     showScreen('login-screen');
 });
