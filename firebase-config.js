@@ -1,7 +1,14 @@
 // Firebase Configuration and Initialization
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getDatabase, ref, push, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
+    signOut, 
+    onAuthStateChanged,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
 
 // Your web app's Firebase configuration
@@ -23,4 +30,19 @@ const auth = getAuth(app);
 const analytics = getAnalytics(app);
 
 // Export Firebase services for use in other modules
-export { database, auth, analytics, ref, push, set, get, remove, onValue, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+export { 
+    database, 
+    auth, 
+    analytics, 
+    ref, 
+    push, 
+    set, 
+    get, 
+    remove, 
+    onValue, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
+    signOut, 
+    onAuthStateChanged,
+    sendPasswordResetEmail
+};

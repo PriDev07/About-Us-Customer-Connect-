@@ -1340,6 +1340,29 @@ select.form-control {
     display: block;
 }
 
+/* Login error messages */
+.login-error {
+    background-color: rgba(var(--color-error-rgb), 0.1);
+    color: var(--color-error);
+    border: 1px solid rgba(var(--color-error-rgb), 0.3);
+    border-radius: var(--radius-base);
+    padding: var(--space-12);
+    margin-top: var(--space-16);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    display: none;
+}
+
+.login-error.show {
+    display: block;
+    animation: fadeIn var(--duration-normal) var(--ease-standard);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Loading states */
 .loading {
     opacity: 0.6;

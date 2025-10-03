@@ -9,8 +9,10 @@ import {
     remove, 
     onValue, 
     signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
     signOut, 
-    onAuthStateChanged 
+    onAuthStateChanged,
+    sendPasswordResetEmail
 } from './firebase-config.js';
 
 // Application Data - this will be replaced by Firebase data
@@ -32,7 +34,6 @@ async function loadCustomersFromFirebase() {
         } else {
             customers = [];
             // Initialize with some sample data if database is empty
-            await initializeSampleData();
         }
         
         console.log('Customers loaded from Firebase:', customers.length);
@@ -41,51 +42,6 @@ async function loadCustomersFromFirebase() {
         console.error('Error loading customers from Firebase:', error);
         customers = [];
         return customers;
-    }
-}
-
-async function initializeSampleData() {
-    const sampleCustomers = [
-        {
-            name: "Rajesh Kumar",
-            mobile: "9876543210",
-            age: 35,
-            address: "123 Civil Lines",
-            city: "Jabalpur",
-            dateOfBirth: "1989-03-15",
-            anniversary: "2015-02-14",
-            rating: 5,
-            notes: "",
-            dateAdded: "2023-01-10"
-        },
-        {
-            name: "Priya Sharma",
-            mobile: "9876543211",
-            age: 28,
-            address: "456 Sadar Bazaar",
-            city: "Mandla", 
-            dateOfBirth: "1996-07-22",
-            anniversary: "2020-12-05",
-            rating: 4,
-            notes: "",
-            dateAdded: "2023-02-01"
-        },
-        {
-            name: "Amit Patel",
-            mobile: "9876543212",
-            age: 42,
-            address: "789 Station Road",
-            city: "Katni",
-            dateOfBirth: "1982-11-08",
-            anniversary: "2010-06-20",
-            rating: 3,
-            notes: "",
-            dateAdded: "2023-03-15"
-        }
-    ];
-
-    for (const customer of sampleCustomers) {
-        await addCustomerToFirebase(customer);
     }
 }
 
@@ -189,54 +145,108 @@ window.generateMarketingSMS = generateMarketingSMS;
 window.copySmsToClipboard = copySmsToClipboard;
 window.sendSuggestedSMS = sendSuggestedSMS;
 
-// Login Functionality - Updated for Firebase Auth
+// Login Functionality - Real Firebase Authentication
 async function handleLogin(e) {
     e.preventDefault();
     console.log('Login form submitted');
     
-    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value.trim();
     
-    console.log('Username:', username, 'Password:', password);
+    // Show loading state
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Signing in...';
+    submitButton.disabled = true;
     
-    // For demo purposes, we'll allow any username/password, but you can implement real auth
-    if (username && password) {
-        try {
-            // Try Firebase authentication first (if you have users set up)
-            // For now, we'll simulate successful login and load data
-            currentUser = { email: username };
-            
-            // Load customers from Firebase
-            await loadCustomersFromFirebase();
-            
-            // Setup real-time listener
-            setupCustomersListener();
-            
-            console.log('Login successful');
-            showHomeScreen();
-        } catch (error) {
-            console.error('Login error:', error);
-            alert('Login failed. Please try again.');
-        }
-    } else {
-        alert('Please enter both username and password');
+    try {
+        // Clear any previous error messages
+        clearLoginErrors();
+        
+        // Authenticate with Firebase
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        console.log('Login successful:', user.email);
+        currentUser = user;
+        
+        // Load customers from Firebase
+        await loadCustomersFromFirebase();
+        
+        // Setup real-time listener
+        setupCustomersListener();
+        
+        showHomeScreen();
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showLoginError(getAuthErrorMessage(error.code));
+    } finally {
+        // Reset button state
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Helper function to get user-friendly error messages
+function getAuthErrorMessage(errorCode) {
+    switch (errorCode) {
+        case 'auth/user-not-found':
+            return 'No account found with this email address.';
+        case 'auth/wrong-password':
+            return 'Incorrect password.';
+        case 'auth/invalid-email':
+            return 'Invalid email address format.';
+        case 'auth/user-disabled':
+            return 'This account has been disabled.';
+        case 'auth/too-many-requests':
+            return 'Too many failed login attempts. Please try again later.';
+        case 'auth/network-request-failed':
+            return 'Network error. Please check your connection.';
+        default:
+            return 'Login failed. Please check your credentials and try again.';
+    }
+}
+
+// Show login error message
+function showLoginError(message) {
+    let errorDiv = document.querySelector('.login-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'login-error';
+        const loginForm = document.getElementById('login-form');
+        loginForm.appendChild(errorDiv);
+    }
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+// Clear login error messages
+function clearLoginErrors() {
+    const errorDiv = document.querySelector('.login-error');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
     }
 }
 
 async function logout() {
     console.log('Logging out');
     try {
-        // Sign out from Firebase if using authentication
-        // await signOut(auth);
+        // Sign out from Firebase
+        await signOut(auth);
         currentUser = null;
         customers = [];
         
         showScreen('login-screen');
         document.getElementById('login-form').reset();
+        clearLoginErrors();
         navigationHistory = [];
         currentCustomerId = null;
+        
+        console.log('Logout successful');
     } catch (error) {
         console.error('Logout error:', error);
+        alert('Error during logout. Please try again.');
     }
 }
 
@@ -709,7 +719,7 @@ function displayCustomers() {
     }
     
     customerList.innerHTML = filteredCustomers.map(customer => `
-        <div class="customer-item" onclick="showCustomerDetailScreen(${customer.id})">
+        <div class="customer-item" onclick="showCustomerDetailScreen('${customer.id}')">
             <div class="customer-info">
                 <p class="customer-name">${customer.name}</p>
                 <p class="customer-mobile">${customer.mobile}</p>
@@ -719,10 +729,10 @@ function displayCustomers() {
                 </div>
             </div>
             <div class="customer-actions">
-                <button class="btn btn--outline btn--sm edit-btn" onclick="event.stopPropagation(); showEditCustomerScreen(${customer.id})">
+                <button class="btn btn--outline btn--sm edit-btn" onclick="event.stopPropagation(); showEditCustomerScreen('${customer.id}')">
                     ✏️ Edit
                 </button>
-                <button class="btn btn--outline btn--sm delete-btn" onclick="event.stopPropagation(); confirmDeleteCustomer(${customer.id})">
+                <button class="btn btn--outline btn--sm delete-btn" onclick="event.stopPropagation(); confirmDeleteCustomer('${customer.id}')">
                     🗑️ Delete
                 </button>
             </div>
@@ -777,7 +787,7 @@ function generateMarketingSMS() {
         return;
     }
 
-    const customer = customers.find(c => c.id === parseInt(customerId));
+    const customer = customers.find(c => c.id === customerId);
     if (!customer) {
         outputElement.value = 'Customer not found.';
         return;
@@ -839,7 +849,7 @@ function sendSuggestedSMS() {
         return;
     }
 
-    const customer = customers.find(c => c.id === parseInt(customerId));
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         // In a real application, this would send an actual SMS
         console.log(`Sending SMS to ${customer.mobile}: ${message}`);
